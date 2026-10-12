@@ -1,0 +1,63 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "projectFolder",
+      "type": "promptString",
+      "description": "Numele proiectului din folderul source",
+      "default": "Example1"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "process",
+      "command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) { Write-Error 'gcc was not found in PATH.'; exit 1 }; $sourceRoot = Join-Path '${workspaceFolder}' 'source'; $project = Join-Path $sourceRoot $env:PROJECT_FOLDER; if (-not (Test-Path -LiteralPath $project -PathType Container)) { throw \"Project folder not found: $project\" }; $build = Join-Path '${workspaceFolder}' 'build'; $sources = Get-ChildItem -LiteralPath $project -Filter '*.c' -File -Recurse; if (-not $sources) { throw \"No .c source files found in $project\" }; New-Item -ItemType Directory -Force -Path $build | Out-Null; $output = Join-Path $build ((Split-Path $project -Leaf) + '.exe'); $sourcePaths = @($sources | ForEach-Object { $_.FullName }); & gcc -Wall -Wextra -std=c11 $sourcePaths -o $output; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ],
+      "options": {
+        "env": {
+          "PROJECT_FOLDER": "${input:projectFolder}",
+          "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Archive",
+      "type": "process",
+      "command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$project = Join-Path (Join-Path '${workspaceFolder}' 'source') $env:PROJECT_FOLDER; $build = Join-Path '${workspaceFolder}' 'build'; $exe = Join-Path $build ((Split-Path $project -Leaf) + '.exe'); if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw \"Executable not found: $exe. Run Build first.\" }; Compress-Archive -LiteralPath $exe -DestinationPath (Join-Path $build ((Split-Path $project -Leaf) + '.zip')) -Force"
+      ],
+      "options": {
+        "env": {
+          "PROJECT_FOLDER": "${input:projectFolder}"
+        }
+      },
+      "dependsOn": "Build",
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Clear",
+      "type": "process",
+      "command": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$build = Join-Path '${workspaceFolder}' 'build'; if (Test-Path -LiteralPath $build -PathType Container) { Get-ChildItem -LiteralPath $build -Force | Remove-Item -Force -Recurse }"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
